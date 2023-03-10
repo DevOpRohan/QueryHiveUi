@@ -68,19 +68,32 @@ const UploadDocument = ({ onSessionIdReceived }) => {
   );
 
   return (
-    <Card sx={{ width: 300, margin: "auto", marginTop: "50px" }}>
-      <CardContent align="center" padding="200px">
-        <Typography variant="h4" align="center" gutterBottom>
-          Upload Document
-        </Typography>
-        {sessionId ? null : (
-          <>
-            {renderFileInput()}
-            {renderUploadButton()}
-          </>
-        )}
-      </CardContent>
-    </Card>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100vh",
+        marginLeft: "auto",
+        marginRight: "auto"
+      }}
+    >
+      <Card sx={{ width: 300 }}>
+        <CardContent align="center" padding="200px">
+          <Typography variant="h4" align="center" gutterBottom>
+            Upload Document
+          </Typography>
+          {sessionId ? null : (
+            <>
+              {renderFileInput()}
+              <br />
+              <br />
+              {renderUploadButton()}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
