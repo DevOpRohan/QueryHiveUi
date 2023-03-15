@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, Card, CardContent, Typography } from "@material-ui/core";
 import CloudUpload from "@material-ui/icons/CloudUpload";
 
-const SERVER_URL = "https://monkfish-app-vxijg.ondigitalocean.app/";
+const SERVER_URL = "https://monkfish-app-vxijg.ondigitalocean.app";
 
 const UploadDocument = ({ onSessionIdReceived }) => {
   const [selectedFile, setSelectedFile] = useState(null);
