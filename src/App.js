@@ -13,7 +13,7 @@ const App = () => {
 
   const handleClearSession = () => {
     fetch(
-      `https://hammerhead-app-cmqaj.ondigitalocean.app/clearSession?id=${sessionId}`,
+      `https://monkfish-app-vxijg.ondigitalocean.app/clearSession?id=${sessionId}`,
       {
         method: "DELETE"
       }
