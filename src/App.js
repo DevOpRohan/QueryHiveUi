@@ -5,44 +5,29 @@ import Chat from "./Chat";
 import UploadDocument from "./UploadDocument";
 
 const App = () => {
-  const [sessionId, setSessionId] = useState(null);
+  const [documentData, setDocumentData] = useState(null);
 
-  const handleSessionIdReceived = (sessionId) => {
-    setSessionId(sessionId);
+  const handleDocumentDataReceived = (data) => {
+    setDocumentData(data);
   };
 
-  const handleClearSession = () => {
-    fetch(
-      `https://monkfish-app-vxijg.ondigitalocean.app/clearSession?id=${sessionId}`,
-      {
-        method: "DELETE"
-      }
-    )
-      .then((response) => {
-        if (response.ok) {
-          setSessionId(null);
-        } else {
-          throw new Error("Failed to clear session");
-        }
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+  const handleClearDocumentData = () => {
+    setDocumentData(null);
   };
 
   return (
     <>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
-        {!sessionId && (
-          <UploadDocument onSessionIdReceived={handleSessionIdReceived} />
+        {!documentData && (
+          <UploadDocument onDocumentDataReceived={handleDocumentDataReceived} />
         )}
-        {sessionId && (
-          <IconButton onClick={handleClearSession}>
+        {documentData && (
+          <IconButton onClick={handleClearDocumentData}>
             <Clear />
           </IconButton>
         )}
       </div>
-      {sessionId && <Chat sessionId={sessionId} />}
+      {documentData && <Chat documentData={documentData} />}
     </>
   );
 };
