@@ -93,40 +93,45 @@ const Chat = ({ documentData }) => {
       const sortedSimilarities = similarities.sort(
         (a, b) => b.similarity - a.similarity
       );
-      setResults(sortedSimilarities.slice(0, 3));
+      const topResults = sortedSimilarities.slice(0, 3);
+      setResults(topResults);
 
-      setLoading(true);
-      const prompt = `
-context:
-\`\`\`
-${results[0].content}
-\`\`\`
-\`\`\`
-${results[1].content}
-\`\`\`
-\`\`\`
-${results[2].content}
-\`\`\`
-Query:
-`;
-
-      const answerResponse = await fetch(
-        `${SERVER_URL}/answer?prompt=${encodeURIComponent(prompt)}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json"
-          }
-        }
-      );
-
-      const answerResult = await answerResponse.json();
-      setAnswer(answerResult.answer);
+      getAnswer(topResults);
     } catch (error) {
       console.error(error);
-    } finally {
-      setLoading(false);
     }
+  };
+
+  const getAnswer = (topResults) => {
+    setLoading(true);
+    const prompt = `
+Using context as refrence, give the answer
+context:
+\`\`\`
+${topResults[0].content}
+\`\`\`
+\`\`\`
+${topResults[1].content}
+\`\`\`
+\`\`\`
+${topResults[2].content}
+\`\`\`
+Query: ${query}
+Ans:
+`;
+
+    fetch(`${SERVER_URL}/answer?q=${encodeURIComponent(prompt)}`)
+      .then((response) => response.text())
+      .then((data) => {
+        console.log(data);
+        setAnswer(data);
+      })
+      .catch((error) => {
+        console.error(error);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   return (
