@@ -12,6 +12,7 @@ import {
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore";
 import AnswerCard from "./AnswerCard";
 
+// Define the styles for the Chat component
 const useStyles = makeStyles((theme) => ({
   root: {
     flexGrow: 1,
@@ -37,8 +38,13 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
+// Server URL for API calls
 const SERVER_URL = "https://monkfish-app-vxijg.ondigitalocean.app";
 
+/**
+ * Chat component to search and display results based on the query
+ * @param {Object} documentData - Data containing sections and embeddings
+ */
 const Chat = ({ documentData }) => {
   const classes = useStyles();
   const [query, setQuery] = useState("");
@@ -46,10 +52,17 @@ const Chat = ({ documentData }) => {
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Handle the change in the search query input
   const handleQueryChange = (event) => {
     setQuery(event.target.value);
   };
 
+  /**
+   * Calculate the cosine similarity between two embeddings
+   * @param {Array} embedding1 - First embedding
+   * @param {Array} embedding2 - Second embedding
+   * @returns {number} Cosine similarity between the two embeddings
+   */
   const calculateCosineSimilarity = (embedding1, embedding2) => {
     if (!Array.isArray(embedding1) || !Array.isArray(embedding2)) {
       return 0;
@@ -68,6 +81,25 @@ const Chat = ({ documentData }) => {
     return dotProduct / (magnitude1 * magnitude2);
   };
 
+  /**
+   * Calculate the Euclidean distance between two embeddings
+   * @param {Array} embedding1 - First embedding
+   * @param {Array} embedding2 - Second embedding
+   * @returns {number} Euclidean distance between the two embeddings
+   */
+  const calculateEuclideanDistance = (embedding1, embedding2) => {
+    if (!Array.isArray(embedding1) || !Array.isArray(embedding2)) {
+      return 0;
+    }
+    return Math.sqrt(
+      embedding1.reduce(
+        (sum, value, index) => sum + Math.pow(value - embedding2[index], 2),
+        0
+      )
+    );
+  };
+
+  // Handle the search button click and fetch results
   const handleSearch = async () => {
     try {
       const response = await fetch(
@@ -90,9 +122,22 @@ const Chat = ({ documentData }) => {
         )
       }));
 
-      const sortedSimilarities = similarities.sort(
-        (a, b) => b.similarity - a.similarity
-      );
+      const sortedSimilarities = similarities.sort((a, b) => {
+        // In case of a tie, use Euclidean distance to break the tie
+        if (b.similarity === a.similarity) {
+          const distanceA = calculateEuclideanDistance(
+            a.embedding,
+            queryEmbedding.embedding
+          );
+          const distanceB = calculateEuclideanDistance(
+            b.embedding,
+            queryEmbedding.embedding
+          );
+          return distanceA - distanceB;
+        }
+        return b.similarity - a.similarity;
+      });
+
       const topResults = sortedSimilarities.slice(0, 3);
       setResults(topResults);
 
@@ -102,10 +147,11 @@ const Chat = ({ documentData }) => {
     }
   };
 
+  // Fetch the answer based on the top results
   const getAnswer = (topResults) => {
     setLoading(true);
     const prompt = `
-Using context as refrence, give the answer
+Using context as reference, give the answer
 context:
 \`\`\`
 ${topResults[0].content}
