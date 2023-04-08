@@ -138,7 +138,20 @@ const Chat = ({ documentData }) => {
         return b.similarity - a.similarity;
       });
 
-      const topResults = sortedSimilarities.slice(0, 3);
+      // const topResults = sortedSimilarities.slice(0, 3);
+
+      //==Experimental feature to display cosine and euclideanDistance
+      const topResults = sortedSimilarities.slice(0, 3).map((result) => {
+        const distance = calculateEuclideanDistance(
+          result.embedding,
+          queryEmbedding.embedding
+        );
+        return {
+          ...result,
+          distance
+        };
+      });
+
       setResults(topResults);
 
       getAnswer(topResults);
@@ -205,9 +218,13 @@ Ans:
                 aria-controls={`panel${index + 1}-content`}
                 id={`panel${index + 1}-header`}
               >
+                {/* Modified this block to, show cosine simlarity and euclidean distance */}
                 <Typography className={classes.accordionHeading}>
-                  {result.title} - {result.heading}
+                  {result.title} - {result.heading} | Cosine Similarity:{" "}
+                  {result.similarity.toFixed(4)} | Euclidean Distance:{" "}
+                  {result.distance.toFixed(4)}
                 </Typography>
+                {/* */}
               </AccordionSummary>
               <AccordionDetails>
                 <Typography>{result.content}</Typography>
