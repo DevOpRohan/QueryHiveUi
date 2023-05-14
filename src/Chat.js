@@ -164,7 +164,7 @@ const Chat = ({ documentData }) => {
   const getAnswer = (topResults) => {
     setLoading(true);
     const prompt = `
-Using context as reference, give the answer
+You are restricted to give answer on the basis of context.
 context:
 \`\`\`
 ${topResults[0].content}
