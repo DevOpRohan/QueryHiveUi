@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Accordion,
   AccordionDetails,
@@ -11,6 +11,17 @@ import {
 } from "@material-ui/core";
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore";
 import AnswerCard from "./AnswerCard";
+
+import {
+  SystemChatMessage,
+  HumanChatMessage,
+  AIChatMessage
+} from "langchain/schema";
+
+import { sys_prompt, user_message, final_message } from "./prompt";
+import run from "./ChatLLm";
+
+import { parseActionLine, extractSubQuery, extractAnswer } from "./Parser";
 
 // Define the styles for the Chat component
 const useStyles = makeStyles((theme) => ({
@@ -51,7 +62,8 @@ const Chat = ({ documentData }) => {
   const [results, setResults] = useState([]);
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
-
+  // const [history, setHistory] = useState([new SystemChatMessage(sys_prompt)]);
+  const historyRef = useRef([new SystemChatMessage(sys_prompt)]);
   // Handle the change in the search query input
   const handleQueryChange = (event) => {
     setQuery(event.target.value);
@@ -153,8 +165,8 @@ const Chat = ({ documentData }) => {
       });
 
       setResults(topResults);
-
-      getAnswer(topResults);
+      console.log(topResults);
+      getAnswerFromAI(topResults);
     } catch (error) {
       console.error(error);
     }
@@ -163,21 +175,6 @@ const Chat = ({ documentData }) => {
   // Fetch the answer based on the top results
   const getAnswer = (topResults) => {
     setLoading(true);
-    const prompt = `
-You are restricted to give answer on the basis of context.
-context:
-\`\`\`
-${topResults[0].content}
-\`\`\`
-\`\`\`
-${topResults[1].content}
-\`\`\`
-\`\`\`
-${topResults[2].content}
-\`\`\`
-Query: ${query}
-Ans:
-`;
 
     fetch(`${SERVER_URL}/answer?q=${encodeURIComponent(prompt)}`)
       .then((response) => response.text())
@@ -191,6 +188,147 @@ Ans:
       .finally(() => {
         setLoading(false);
       });
+  };
+
+  const fetchNewResults = async (searchQuery) => {
+    try {
+      const response = await fetch(
+        `${SERVER_URL}/embedding?query=${encodeURIComponent(searchQuery)}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      const queryEmbedding = await response.json();
+      console.log(queryEmbedding);
+      const similarities = documentData.sections.map((item) => ({
+        ...item,
+        similarity: calculateCosineSimilarity(
+          item.embedding,
+          queryEmbedding.embedding
+        )
+      }));
+
+      const sortedSimilarities = similarities.sort((a, b) => {
+        // In case of a tie, use Euclidean distance to break the tie
+        if (b.similarity === a.similarity) {
+          const distanceA = calculateEuclideanDistance(
+            a.embedding,
+            queryEmbedding.embedding
+          );
+          const distanceB = calculateEuclideanDistance(
+            b.embedding,
+            queryEmbedding.embedding
+          );
+          return distanceA - distanceB;
+        }
+        return b.similarity - a.similarity;
+      });
+
+      //== Experimental feature to display cosine and euclideanDistance
+      const newResults = sortedSimilarities.slice(0, 3).map((result) => {
+        const distance = calculateEuclideanDistance(
+          result.embedding,
+          queryEmbedding.embedding
+        );
+        return {
+          ...result,
+          distance
+        };
+      });
+
+      return newResults;
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  };
+
+  // Fetch the answer based on the top results
+  const getAnswerFromAI = async (topResults) => {
+    try {
+      setLoading(true);
+
+      // Extract the content from the top results
+      const topResultsContent = topResults
+        .map((result) => result.content)
+        .join("\n==\n ");
+
+      // Create a user prompt using the user_message function and the top results content
+      const userPrompt = await user_message(query, topResultsContent);
+
+      // Update the history array with the user prompt
+      historyRef.current = [
+        ...historyRef.current,
+        new HumanChatMessage(userPrompt)
+      ];
+
+      // Call the ChatLLM function run with the updated history as an argument
+      const aiResponse = await run(historyRef.current);
+
+      // Append the AI response to the history array as an AIChatMessage
+      historyRef.current = [
+        ...historyRef.current,
+        new AIChatMessage(aiResponse.text)
+      ];
+
+      // Parse the AI response using the parseActionLine function to get the action
+      const action = parseActionLine(aiResponse.text + "");
+
+      // Check if the action starts with "@search"
+      if (action.startsWith("@search")) {
+        // Extract the search query using the search function
+        const searchQuery = await extractSubQuery(action);
+
+        // Call the handleSearch function with the extracted query
+        let newResults = await fetchNewResults(searchQuery);
+        console.log(newResults);
+        // Append the new results to the previous top results
+        const combinedResults = [...topResults, ...newResults];
+
+        // Update the UI with the combined results
+        setResults(combinedResults);
+        // Append the new top results as a HumanChatMessage
+        const newTopResultsContent = newResults
+          .map((result) => result.content)
+          .join("\n==\n ");
+
+        console.log(newTopResultsContent);
+
+        const finalAnsPrompt = await final_message(newTopResultsContent + "");
+        console.log(finalAnsPrompt);
+        historyRef.current = [
+          ...historyRef.current,
+          new HumanChatMessage(finalAnsPrompt)
+        ];
+
+        // Call the ChatLLM function run with the updated history as an argument
+        const finalResponse = await run(historyRef.current);
+
+        const answerText = extractAnswer(
+          parseActionLine(finalResponse.text + "")
+        );
+        setAnswer(answerText);
+
+        // Clear the history array except for the first message
+        historyRef.current = [historyRef.current[0]];
+      } else if (action.startsWith("@answer")) {
+        // If the action starts with "@answer", display the answer using the answer function
+        const answerText = extractAnswer(action);
+        setAnswer(answerText);
+
+        // Clear the history array except for the first message
+        historyRef.current = [historyRef.current[0]];
+      }
+    } catch (error) {
+      console.error(error);
+      historyRef.current = [historyRef.current[0]];
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -210,7 +348,7 @@ Ans:
       </Button>
       {results.length > 0 && (
         <div className={classes.results}>
-          <Typography variant="h6">Top 3 Results:</Typography>
+          <Typography variant="h6">Top Results:</Typography>
           {results.map((result, index) => (
             <Accordion key={index}>
               <AccordionSummary
