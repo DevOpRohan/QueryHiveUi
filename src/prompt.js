@@ -52,7 +52,7 @@ Actions-Format:
 @search: <query>
 @answer: <ans>
 
-e,g if query need details of both blackhole and human, and you have only information about human then return a search about human.
+e,g if query need details of both blackhole and human, and you have only information about human then return a search about blackhole.
 `;
 
 module.exports = { user_message, sys_prompt, final_message };
