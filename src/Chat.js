@@ -333,9 +333,6 @@ const Chat = ({ documentData }) => {
 
   return (
     <div className={classes.root}>
-      <Typography variant="h4" gutterBottom>
-        QueryHive
-      </Typography>
       <TextField
         label="Search"
         value={query}
